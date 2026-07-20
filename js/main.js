@@ -44,6 +44,29 @@ const dom = {
 };
 
 // ==========================================
+// LightDM 回调提前绑定（必须在脚本加载时立即设置，
+// 部分 Greeter 会在脚本执行完毕后快照回调，延迟设置将导致回调丢失）
+// ==========================================
+(function bindLightDMCallbacks() {
+    if (typeof lightdm === 'undefined') return;
+
+    lightdm.authentication_complete = function () {
+        console.log('[LightDM Theme] Authentication complete');
+        onAuthenticationComplete();
+    };
+
+    lightdm.show_prompt = function (text, type) {
+        console.log('[LightDM Theme] Show prompt:', text, type);
+        onShowPrompt(text);
+    };
+
+    lightdm.show_message = function (text, type) {
+        console.log('[LightDM Theme] Show message:', text, type);
+        onShowMessage(text, type);
+    };
+})();
+
+// ==========================================
 // 时钟更新
 // ==========================================
 const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -220,6 +243,10 @@ function hideSessionDropdown() {
 // 登录流程
 // ==========================================
 
+// 用于防止 cancel_authentication 触发的 authentication_complete 回调
+// 干扰新的认证流程
+var _authCancelInProgress = false;
+
 function resetLoginState() {
     state.isAuthenticating = false;
     state.isLoggedIn = false;
@@ -255,8 +282,10 @@ function startAuthentication() {
     // Cancel any existing authentication session first
     if (isLightDMAvailable()) {
         try {
+            _authCancelInProgress = true;
             lightdm.cancel_authentication();
         } catch (e) {
+            _authCancelInProgress = false;
             // Ignore errors if no active session
         }
     }
@@ -268,6 +297,7 @@ function startAuthentication() {
 
     // Small delay to ensure cancel completes before starting new auth
     setTimeout(function () {
+        _authCancelInProgress = false;
         authenticate(user.username);
     }, 50);
 
@@ -309,6 +339,12 @@ function submitPassword() {
 }
 
 function onAuthenticationComplete() {
+    // 如果正在取消认证，忽略此次回调（防止竞态条件）
+    if (_authCancelInProgress) {
+        console.log('[LightDM Theme] Ignoring auth complete during cancel');
+        return;
+    }
+
     hideLoading();
 
     // 清除认证超时定时器
@@ -325,12 +361,16 @@ function onAuthenticationComplete() {
         showLoading('正在登录...');
         startSession();
     } else {
+        // 认证失败：重置状态并自动重新开始认证，避免用户需要点击两次
         state.isAuthenticating = false;
         dom.passwordInput.value = '';
-        dom.passwordInput.disabled = false;
-        dom.loginBtn.disabled = false;
-        dom.passwordInput.focus();
         showMessage('密码错误，请重试', 'error');
+        // 延迟后自动重启认证流程
+        setTimeout(function () {
+            if (!state.isLoggedIn) {
+                startAuthentication();
+            }
+        }, 300);
     }
 }
 
@@ -338,6 +378,16 @@ function onShowPrompt(text) {
     if (text) {
         showMessage(text, 'info');
     }
+
+    // 如果 prompt 再次触发（如 PAM 多阶段认证），重新启用输入框
+    if (state.isAuthenticating && !state.isLoggedIn && dom.passwordInput.disabled) {
+        dom.passwordInput.disabled = false;
+        dom.passwordInput.value = '';
+        dom.loginBtn.disabled = false;
+        dom.passwordInput.focus();
+        return;
+    }
+
     // 如果认证已启动且有密码输入，自动提交
     // 这处理了 show_prompt 在用户点击登录后才触发的情况
     if (state.isAuthenticating && dom.passwordInput.value && !dom.passwordInput.disabled) {
@@ -434,25 +484,6 @@ function initTheme() {
     _themeInitialized = true;
 
     try {
-        // Bind LightDM callbacks inside initTheme to ensure they are registered
-        // before authenticate() is called. Some greeter versions require this.
-        if (typeof lightdm !== 'undefined') {
-            lightdm.authentication_complete = function () {
-                console.log('[LightDM Theme] Authentication complete');
-                onAuthenticationComplete();
-            };
-
-            lightdm.show_prompt = function (text, type) {
-                console.log('[LightDM Theme] Show prompt:', text, type);
-                onShowPrompt(text);
-            };
-
-            lightdm.show_message = function (text, type) {
-                console.log('[LightDM Theme] Show message:', text, type);
-                onShowMessage(text, type);
-            };
-        }
-
         // Get user list
         state.users = getUsers();
 
