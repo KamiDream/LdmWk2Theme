@@ -263,7 +263,7 @@ function startAuthentication() {
     if (state._authTimer) clearTimeout(state._authTimer);
     state._authTimer = setTimeout(function () {
         if (state.isAuthenticating && !state.isLoggedIn) {
-            console.warn('[LightDM 主题] 认证超时，重置');
+            console.warn('[LightDM Theme] Auth timeout, resetting');
             state.isAuthenticating = false;
             hideLoading();
             dom.passwordInput.disabled = false;
@@ -278,7 +278,7 @@ function submitPassword() {
 
     // 如果认证还未开始，先启动认证，让用户再点一次登录
     if (!state.isAuthenticating) {
-        console.warn('[LightDM 主题] 认证尚未开始，尝试启动');
+        console.warn('[LightDM Theme] Auth not started, attempting to start');
         startAuthentication();
         showMessage('请再次点击登录以完成验证', 'info');
         return;
@@ -329,7 +329,7 @@ function onShowPrompt(text) {
     // 如果认证已启动且有密码输入，自动提交
     // 这处理了 show_prompt 在用户点击登录后才触发的情况
     if (state.isAuthenticating && dom.passwordInput.value && !dom.passwordInput.disabled) {
-        console.log('[LightDM 主题] show_prompt 触发，自动提交密码');
+        console.log('[LightDM Theme] show_prompt received, auto-submitting password');
         submitPassword();
     }
 }
@@ -454,29 +454,29 @@ function initTheme() {
 // ==========================================
 
 window.greeter_ready = function () {
-    console.log('[LightDM 主题] Greeter 已就绪');
+    console.log('[LightDM Theme] Greeter ready');
     initTheme();
 };
 
 if (typeof lightdm !== 'undefined') {
     lightdm.authentication_complete = function () {
-        console.log('[LightDM 主题] 认证完成');
+        console.log('[LightDM Theme] Authentication complete');
         onAuthenticationComplete();
     };
 
     lightdm.show_prompt = function (text, type) {
-        console.log('[LightDM 主题] 显示提示:', text, type);
+        console.log('[LightDM Theme] Show prompt:', text, type);
         onShowPrompt(text);
     };
 
     lightdm.show_message = function (text, type) {
-        console.log('[LightDM 主题] 显示消息:', text, type);
+        console.log('[LightDM Theme] Show message:', text, type);
         onShowMessage(text, type);
     };
 
     // 部分 LightDM WebKit2 Greeter 版本不触发 greeter_ready
     // 直接在此处初始化，同时保留 greeter_ready 作为兼容
-    console.log('[LightDM 主题] LightDM 可用，立即初始化');
+    console.log('[LightDM Theme] LightDM available, initializing now');
     initTheme();
 }
 
@@ -485,7 +485,7 @@ if (typeof lightdm !== 'undefined') {
 // ==========================================
 
 if (!isLightDMAvailable()) {
-    console.warn('[LightDM 主题] LightDM API 不可用，使用模拟数据');
+    console.warn('[LightDM Theme] LightDM API unavailable, using mock data');
 
     const mockUsers = [
         { username: 'alice', display_name: 'Alice', image: '' },
@@ -510,10 +510,10 @@ if (!isLightDMAvailable()) {
         hostname: 'my-computer',
         select_user: function () {},
         authenticate: function (username) {
-            console.log('[模拟] 开始认证:', username);
+            console.log('[Mock] Authenticating:', username);
         },
         respond: function (secret) {
-            console.log('[模拟] 发送密码:', secret);
+            console.log('[Mock] Sending password:', secret);
             if (secret === 'password') {
                 this.is_authenticated = true;
                 if (this.authentication_complete) this.authentication_complete();
@@ -523,11 +523,11 @@ if (!isLightDMAvailable()) {
             }
         },
         cancel_authentication: function () {
-            console.log('[模拟] 取消认证');
+            console.log('[Mock] Cancel authentication');
         },
         start_session: function (sessionKey) {
-            console.log('[模拟] 启动会话:', sessionKey);
-            alert(`[开发模式] 模拟启动会话: ${sessionKey}`);
+            console.log('[Mock] Start session:', sessionKey);
+            alert(`[Dev Mode] Mock start session: ${sessionKey}`);
             hideLoading();
             state.isLoggedIn = false;
             state.isAuthenticating = false;
@@ -537,13 +537,13 @@ if (!isLightDMAvailable()) {
             dom.passwordInput.focus();
         },
         suspend: function () {
-            alert('[开发模式] 模拟系统挂起');
+            alert('[Dev Mode] Mock system suspend');
         },
         restart: function () {
-            alert('[开发模式] 模拟系统重启');
+            alert('[Dev Mode] Mock system restart');
         },
         shutdown: function () {
-            alert('[开发模式] 模拟系统关机');
+            alert('[Dev Mode] Mock system shutdown');
         },
     };
 
