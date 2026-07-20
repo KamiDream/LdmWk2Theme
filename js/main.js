@@ -261,7 +261,15 @@ function startAuthentication() {
 }
 
 function submitPassword() {
-    if (!state.isAuthenticating || state.isLoggedIn) return;
+    if (state.isLoggedIn) return;
+
+    // 如果认证还未开始，先启动认证，让用户再点一次登录
+    if (!state.isAuthenticating) {
+        console.warn('[LightDM 主题] 认证尚未开始，尝试启动');
+        startAuthentication();
+        showMessage('请再次点击登录以完成验证', 'info');
+        return;
+    }
 
     const password = dom.passwordInput.value;
     if (!password) {
@@ -382,29 +390,32 @@ dom.shutdownBtn.addEventListener('click', () => {
 // ==========================================
 
 function initTheme() {
-    // 获取用户列表
-    state.users = getUsers();
+    try {
+        // 获取用户列表
+        state.users = getUsers();
 
-    if (state.users.length === 0) {
-        dom.passwordInput.disabled = true;
-        dom.loginBtn.disabled = true;
-        showMessage('没有可用用户账户', 'error');
-        return;
-    }
+        if (state.users.length === 0) {
+            dom.passwordInput.disabled = true;
+            dom.loginBtn.disabled = true;
+            showMessage('没有可用用户账户', 'error');
+            return;
+        }
 
-    state.currentUserIndex = 0;
-    updateCurrentUser();
+        state.currentUserIndex = 0;
+        updateCurrentUser();
 
-    // 初始化会话列表
-    updateSessions();
+        // 初始化会话列表
+        updateSessions();
 
-    // 初始化电源控制
-    initPowerControls();
+        // 初始化电源控制
+        initPowerControls();
 
-    // 延迟启动认证
-    setTimeout(() => {
+        // 启动认证
         startAuthentication();
-    }, 100);
+    } catch (e) {
+        console.error('[LightDM 主题] 初始化失败:', e);
+        showMessage('主题初始化失败', 'error');
+    }
 }
 
 // ==========================================
@@ -431,6 +442,23 @@ if (typeof lightdm !== 'undefined') {
         console.log('[LightDM 主题] 显示消息:', text, type);
         onShowMessage(text, type);
     };
+
+    // 备用初始化：某些 LightDM 版本可能不触发 greeter_ready
+    // 使用 requestAnimationFrame 确保 DOM 就绪后再初始化
+    if (typeof window.greeter_ready === 'function') {
+        var _origReady = window.greeter_ready;
+        window.greeter_ready = function () {
+            _origReady();
+        };
+    }
+
+    // 兜底：如果 2 秒后仍未初始化，强制初始化
+    var initTimer = setTimeout(function () {
+        if (!state.isAuthenticating && state.users.length === 0) {
+            console.warn('[LightDM 主题] greeter_ready 未触发，执行备用初始化');
+            initTheme();
+        }
+    }, 2000);
 }
 
 // ==========================================
