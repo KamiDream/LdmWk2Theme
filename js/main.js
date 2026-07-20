@@ -248,8 +248,17 @@ function hideLoading() {
 function startAuthentication() {
     const user = state.currentUser;
     if (!user) {
-        showMessage('没有可用用户', 'error');
+        showMessage('No available user', 'error');
         return;
+    }
+
+    // Cancel any existing authentication session first
+    if (isLightDMAvailable()) {
+        try {
+            lightdm.cancel_authentication();
+        } catch (e) {
+            // Ignore errors if no active session
+        }
     }
 
     state.isAuthenticating = true;
@@ -257,9 +266,12 @@ function startAuthentication() {
     dom.passwordInput.focus();
     dom.loginBtn.disabled = false;
 
-    authenticate(user.username);
+    // Small delay to ensure cancel completes before starting new auth
+    setTimeout(function () {
+        authenticate(user.username);
+    }, 50);
 
-    // 认证超时保护：如果 15 秒后仍未完成认证，重置状态
+    // Auth timeout protection: reset after 30 seconds
     if (state._authTimer) clearTimeout(state._authTimer);
     state._authTimer = setTimeout(function () {
         if (state.isAuthenticating && !state.isLoggedIn) {
@@ -268,9 +280,9 @@ function startAuthentication() {
             hideLoading();
             dom.passwordInput.disabled = false;
             dom.loginBtn.disabled = false;
-            showMessage('认证超时，请重试', 'error');
+            showMessage('Authentication timeout, please try again', 'error');
         }
-    }, 15000);
+    }, 30000);
 }
 
 function submitPassword() {
@@ -478,10 +490,12 @@ window.greeter_ready = function () {
 };
 
 if (typeof lightdm !== 'undefined') {
-    // Callbacks are now bound inside initTheme() to ensure they are set
-    // before authenticate() is called
+    // Some greeter versions reset callbacks after the script loads.
+    // Wait briefly then set callbacks and initialize to ensure they stick.
     console.log('[LightDM Theme] LightDM available, initializing now');
-    initTheme();
+    setTimeout(function () {
+        initTheme();
+    }, 100);
 }
 
 // ==========================================
