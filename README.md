@@ -1,85 +1,82 @@
-# LdmWk2Theme - LightDM WebKit2 登录主题
+# LdmWk2Theme - LightDM WebKit 登录主题
 
-一个简洁、现代的 LightDM WebKit2 登录/锁屏主题，具有毛玻璃效果、流畅动画和直观的用户界面。
+简洁现代的 LightDM WebKit 登录/锁屏主题，同时兼容 **lightdm-webkit (WebKit1)** 和 **lightdm-webkit2-greeter**。
 
-## 预览功能
+## 功能特性
 
-- 🕐 **实时时钟** - 显示当前时间和日期（中文格式）
-- 👤 **用户切换** - 支持多用户之间的切换（上下翻页按钮）
-- 🔑 **密码登录** - 支持回车键和点击按钮提交密码
-- 🖥️ **会话选择** - 可在登录前选择要启动的桌面环境
-- ⚡ **电源管理** - 挂起、重启、关机按钮（根据系统能力自动显示/隐藏）
-- 🌀 **加载动画** - 登录验证时的加载效果
-- 🎨 **毛玻璃效果** - 使用 backdrop-filter 实现现代 UI 风格
-- 🌈 **动态渐变背景** - 平滑流动的渐变色背景
-- 📱 **响应式设计** - 适配不同分辨率和屏幕尺寸
-- 🧪 **开发模式** - 无 LightDM 环境时可使用模拟数据进行前端调试
+- 🕐 **实时时钟** — 中文日期时间格式，每秒更新
+- 👤 **用户切换** — 点击头像下拉切换用户
+- 🔑 **密码登录** — 回车键或点击按钮提交
+- 🖥️ **会话选择** — 选择桌面环境，支持 localStorage 记忆
+- ⚡ **电源管理** — 重启、关机按钮（根据系统能力自动显示）
+- 🌀 **加载动画** — 登录验证时显示加载遮罩
+- 🎨 **毛玻璃效果** — backdrop-filter 实现现代 UI
+- 📱 **响应式设计** — 适配不同分辨率
+- 🧪 **开发模式** — 无 LightDM 时自动使用模拟数据调试
+- 🔄 **双 API 兼容** — 自动检测并使用正确的 LightDM API
 
 ## 文件结构
 
 ```
 LdmWk2Theme/
-├── index.html          # 主 HTML 文件
-├── theme.json          # 主题配置文件
-├── README.md           # 本说明文件
+├── index.html          # 主 HTML
+├── theme.json          # 主题配置
+├── README.md           # 本文件
 ├── css/
-│   └── style.css       # 主题样式
+│   └── style.css       # 样式
 ├── js/
-│   └── main.js         # 主题逻辑（LightDM API 交互）
-└── assets/             # 资源目录（可放置背景图等）
+│   └── main.js         # 核心逻辑（API 检测、认证流程、会话管理）
+└── assets/
+    └── background.png  # 默认背景
 ```
 
-## 安装方法
+## 安装
 
 ### 前置条件
 
-确保已安装 `lightdm` 和 `lightdm-webkit2-greeter`：
-
 ```bash
-# Arch Linux / Manjaro
+# Arch Linux
 sudo pacman -S lightdm lightdm-webkit2-greeter
 
-# Debian / Ubuntu
-sudo apt install lightdm lightdm-webkit2-greeter
-
-# Fedora
-sudo dnf install lightdm lightdm-webkit2-greeter
+# 或使用 lightdm-webkit (WebKit1)
+sudo pacman -S lightdm
 ```
 
-### 设置 LightDM 使用 WebKit2 Greeter
+### 安装主题
 
-编辑 LightDM 配置文件 `/etc/lightdm/lightdm.conf`：
+```bash
+# 复制到 lightdm-webkit 主题目录
+sudo cp -r LdmWk2Theme /usr/share/lightdm-webkit/themes/KamiDream_Theme
+```
+
+### 配置 LightDM
+
+编辑 `/etc/lightdm/lightdm.conf`：
 
 ```ini
 [Seat:*]
 greeter-session=lightdm-webkit2-greeter
 ```
 
-### 安装主题
-
-1. 将主题目录复制到系统主题目录：
-
-```bash
-sudo cp -r LdmWk2Theme /usr/share/lightdm-webkit/themes/
-```
-
-或者对于 web-greeter（较新版本）：
-
-```bash
-sudo cp -r LdmWk2Theme /usr/share/web-greeter/themes/
-```
-
-2. 编辑 LightDM WebKit2 Greeter 配置文件 `/etc/lightdm/lightdm-webkit2-greeter.conf`：
+或使用 webkit (WebKit1)：
 
 ```ini
-[greeter]
-webkit-theme = LdmWk2Theme
+[Seat:*]
+greeter-session=lightdm-webkit
 ```
 
-### 切换默认 Greeter（如果需要）
+编辑 greeter 配置文件指定主题：
 
 ```bash
-sudo lightdm --set-default-greeter lightdm-webkit2-greeter
+# lightdm-webkit2-greeter
+/etc/lightdm/lightdm-webkit2-greeter.conf
+[greeter]
+webkit-theme = KamiDream_Theme
+
+# lightdm-webkit (WebKit1)
+/etc/lightdm/lightdm-webkit.conf
+[greeter]
+webkit-theme = KamiDream_Theme
 ```
 
 ### 重启 LightDM
@@ -88,34 +85,39 @@ sudo lightdm --set-default-greeter lightdm-webkit2-greeter
 sudo systemctl restart lightdm
 ```
 
-> **注意**：如果当前在图形会话中，重启 LightDM 会退出当前会话。建议在 TTY 或 SSH 中执行。
+> ⚠️ 重启 LightDM 会退出当前图形会话，建议在 TTY 中执行。
+
+## API 兼容性
+
+主题自动检测 Greeter 类型并使用对应 API：
+
+| 功能 | WebKit1 | WebKit2 |
+|------|---------|---------|
+| 回调 | `window.show_prompt` 全局函数 | `lightdm.show_prompt` 属性赋值 |
+| 认证 | `lightdm.start_authentication()` | `lightdm.authenticate()` |
+| 密码 | `lightdm.provide_secret()` | `lightdm.respond()` |
+| 会话 | `lightdm.login(user, key)` | `lightdm.start_session(key)` |
+| 用户属性 | `user.name` / `user.real_name` | `user.username` / `user.display_name` |
 
 ## 开发模式
 
-该主题支持在没有 LightDM 环境的情况下直接通过浏览器进行前端开发和调试。
-
-只需在浏览器中直接打开 `index.html` 文件即可：
+浏览器直接打开 `index.html` 即可调试，无需 LightDM 环境：
 
 ```bash
-# 使用文件协议打开
 firefox index.html
-# 或者
-chromium index.html
 ```
 
-在开发模式下：
-- 模拟了 2 个用户（`user` / `admin`）
-- 模拟了 4 个桌面环境会话（GNOME / KDE Plasma / Xfce / i3）
-- 密码 `password` 会模拟登录成功
-- 其他密码会模拟登录失败
-- 电源按钮会触发提示而不是实际执行操作
+模拟数据：
+- 3 个用户：alice / bob / charlie
+- 4 个会话：GNOME / KDE Plasma / Xfce / i3
+- 密码 `password` 模拟登录成功，其他密码模拟失败
+- 电源按钮弹出提示而非实际操作
 
-## 自定义配置
+## 自定义
 
-### 自定义背景图片
+### 更换背景
 
-1. 将背景图片放入 `assets/` 目录
-2. 在 `css/style.css` 中修改 `#background` 样式：
+替换 `assets/background.png`，或在 `css/style.css` 中修改：
 
 ```css
 #background {
@@ -123,16 +125,15 @@ chromium index.html
 }
 ```
 
-### 修改主题颜色
+### 修改主题色
 
-在 `css/style.css` 的 `:root` 中修改变量：
+在 `css/style.css` 的 `:root` 中：
 
 ```css
 :root {
-    --accent-color: #4fc3f7;      /* 强调色（蓝色） */
-    --bg-gradient-start: #0f0c29;  /* 背景渐变起始色 */
-    --bg-gradient-mid: #302b63;    /* 背景渐变中间色 */
-    --bg-gradient-end: #24243e;    /* 背景渐变结束色 */
+    --accent-color: #4fc3f7;
+    --error-color: #ef5350;
+    --success-color: #66bb6a;
 }
 ```
 

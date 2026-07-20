@@ -18,6 +18,7 @@ const state = {
     currentSession: null,
     isAuthenticating: false,
     isLoggedIn: false,
+    _promptReceived: false,
 };
 
 // ==========================================
@@ -44,26 +45,87 @@ const dom = {
 };
 
 // ==========================================
-// LightDM 回调提前绑定（必须在脚本加载时立即设置，
-// 部分 Greeter 会在脚本执行完毕后快照回调，延迟设置将导致回调丢失）
+// LightDM API 版本检测与回调绑定
+//
+// lightdm-webkit (WebKit1) API:
+//   回调: 全局函数 (window.show_prompt, window.authentication_complete, ...)
+//   认证: lightdm.start_authentication(username)
+//   密码: lightdm.provide_secret(password)
+//   会话: lightdm.login(user, session)
+//
+// lightdm-webkit2-greeter API:
+//   回调: lightdm 对象属性 (lightdm.show_prompt = fn, ...)
+//   认证: lightdm.authenticate(username)
+//   密码: lightdm.respond(password)
+//   会话: lightdm.start_session(key)
 // ==========================================
-(function bindLightDMCallbacks() {
+var _apiMode = null; // 'webkit1' | 'webkit2'
+
+(function detectAndBindAPI() {
     if (typeof lightdm === 'undefined') return;
 
-    lightdm.authentication_complete = function () {
+    // 检测 callback 连接方式：Qt .connect() vs 属性赋值
+    // 某些 Greeter 同时有 authenticate 方法但使用 .connect() 信号机制
+    var hasConnect = (typeof lightdm.authentication_complete === 'object' &&
+                      lightdm.authentication_complete !== null &&
+                      typeof lightdm.authentication_complete.connect === 'function');
+
+    // lightdm-webkit (WebKit1) 的特征: 有 start_authentication，没有 authenticate
+    if (typeof lightdm.start_authentication === 'function' &&
+        typeof lightdm.authenticate !== 'function') {
+        _apiMode = 'webkit1';
+    } else if (typeof lightdm.authenticate === 'function') {
+        _apiMode = 'webkit2';
+    } else {
+        // 兜底：检查 provide_secret vs respond
+        if (typeof lightdm.provide_secret === 'function') {
+            _apiMode = 'webkit1';
+        } else if (typeof lightdm.respond === 'function') {
+            _apiMode = 'webkit2';
+        } else {
+            _apiMode = 'webkit2'; // 默认尝试 WebKit2
+        }
+    }
+
+    console.log('[LightDM Theme] API mode:', _apiMode, ', hasConnect:', hasConnect);
+
+    // 定义回调处理函数
+    function onAuthComplete() {
         console.log('[LightDM Theme] Authentication complete');
         onAuthenticationComplete();
-    };
-
-    lightdm.show_prompt = function (text, type) {
+    }
+    function onPrompt(text, type) {
         console.log('[LightDM Theme] Show prompt:', text, type);
         onShowPrompt(text);
-    };
-
-    lightdm.show_message = function (text, type) {
+    }
+    function onMessage(text, type) {
         console.log('[LightDM Theme] Show message:', text, type);
         onShowMessage(text, type);
-    };
+    }
+
+    if (hasConnect) {
+        // Qt-style signal connection
+        lightdm.authentication_complete.connect(onAuthComplete);
+        lightdm.show_prompt.connect(onPrompt);
+        lightdm.show_message.connect(onMessage);
+    } else {
+        // 双保险：同时设置全局函数和 lightdm 属性
+        // 某些 Greeter 混用 API（如 lightdm.authenticate + 全局回调）
+        window.show_prompt = onPrompt;
+        window.show_message = onMessage;
+        window.authentication_complete = onAuthComplete;
+        window.show_error = function (text) {
+            console.log('[LightDM Theme] Show error:', text);
+            onShowMessage(text, 'error');
+        };
+        window.autologin_timer_expired = function () {
+            console.log('[LightDM Theme] Autologin timer expired');
+        };
+
+        lightdm.authentication_complete = onAuthComplete;
+        lightdm.show_prompt = onPrompt;
+        lightdm.show_message = onMessage;
+    }
 })();
 
 // ==========================================
@@ -97,7 +159,16 @@ function isLightDMAvailable() {
 
 function getUsers() {
     if (!isLightDMAvailable()) return [];
-    return lightdm.users || [];
+    var users = lightdm.users || [];
+    // 规范化用户对象：WebKit1 用 name/real_name，WebKit2 用 username/display_name
+    return users.map(function (u) {
+        return {
+            username: u.username || u.name || '',
+            display_name: u.display_name || u.real_name || u.name || '',
+            image: u.image || '',
+            logged_in: u.logged_in || false,
+        };
+    });
 }
 
 function getSessions() {
@@ -107,25 +178,74 @@ function getSessions() {
 
 function authenticate(username) {
     if (!isLightDMAvailable()) return;
-    lightdm.authenticate(username);
+    try {
+        console.log('[LightDM Theme] Calling authenticate for:', username, '(mode:', _apiMode, ')');
+        // 优先使用 start_authentication（WebKit1 及某些混血 Greeter），
+        // 因为它在 WebKit1 目录下经实战验证可行
+        if (typeof lightdm.start_authentication === 'function') {
+            console.log('[LightDM Theme] Using lightdm.start_authentication()');
+            lightdm.start_authentication(username);
+        } else if (typeof lightdm.authenticate === 'function') {
+            console.log('[LightDM Theme] Using lightdm.authenticate()');
+            lightdm.authenticate(username);
+        } else {
+            console.error('[LightDM Theme] No authentication method found on lightdm');
+        }
+        console.log('[LightDM Theme] authenticate call completed');
+    } catch (e) {
+        console.error('[LightDM Theme] authenticate() failed:', e.message, e.stack);
+    }
 }
 
 function respond(password) {
     if (!isLightDMAvailable()) return;
-    lightdm.respond(password);
+    try {
+        // 优先使用 provide_secret（与 start_authentication 配套的 WebKit1 风格），
+        // 回退到 respond（WebKit2 风格）
+        if (typeof lightdm.provide_secret === 'function') {
+            lightdm.provide_secret(password);
+        } else if (typeof lightdm.respond === 'function') {
+            lightdm.respond(password);
+        } else {
+            console.error('[LightDM Theme] No password response method found');
+        }
+    } catch (e) {
+        console.error('[LightDM Theme] respond() failed:', e.message);
+    }
 }
 
 function cancelAuthentication() {
     if (!isLightDMAvailable()) return;
-    lightdm.cancel_authentication();
+    try {
+        // 两个 API 都使用 cancel_authentication()
+        lightdm.cancel_authentication();
+    } catch (e) {
+        console.warn('[LightDM Theme] cancel_authentication() not supported:', e.message);
+    }
 }
 
 function startSession() {
     if (!isLightDMAvailable()) return;
-    const sessionKey = state.currentSession
-        ? state.currentSession.key
-        : lightdm.default_session;
-    lightdm.start_session(sessionKey);
+
+    // 优先使用 login()（WebKit1 风格），回退到 start_session()（WebKit2 风格）
+    if (typeof lightdm.login === 'function') {
+        var user = state.currentUser;
+        var sessionKey = state.currentSession
+            ? state.currentSession.key
+            : (lightdm.sessions && lightdm.sessions.length > 0 ? lightdm.sessions[0].key : '');
+        if (user && sessionKey) {
+            lightdm.login(user, sessionKey);
+        } else {
+            console.error('[LightDM Theme] Missing user or session for login');
+        }
+    } else if (typeof lightdm.start_session === 'function') {
+        const sessionKey = state.currentSession
+            ? state.currentSession.key
+            : lightdm.default_session;
+        lightdm.start_session(sessionKey);
+    } else {
+        console.error('[LightDM Theme] No session start method found');
+    }
 }
 
 // ==========================================
@@ -187,7 +307,8 @@ function hideUserDropdown() {
 
 function updateSessions() {
     state.sessions = getSessions();
-    const defaultSession = lightdm.default_session;
+    var defaultSession = lightdm.default_session
+        || (state.sessions.length > 0 ? state.sessions[0].key : null);
 
     dom.sessionList.innerHTML = '';
 
@@ -195,6 +316,22 @@ function updateSessions() {
         dom.sessionName.textContent = '无可用的会话';
         return;
     }
+
+    // 如果用户之前选择过桌面环境，从 localStorage 恢复
+    if (state.currentUser) {
+        var savedSession = localStorage.getItem('session_' + state.currentUser.username);
+        if (savedSession) {
+            // 确认保存的 session 仍然存在
+            var found = state.sessions.some(function (s) { return s.key === savedSession; });
+            if (found) {
+                defaultSession = savedSession;
+            }
+        }
+    }
+
+    // 始终默认选中第一个会话，防止 defaultSession 不匹配时显示 HTML 占位文本
+    state.currentSession = state.sessions[0];
+    dom.sessionName.textContent = state.sessions[0].name;
 
     state.sessions.forEach((session, index) => {
         const li = document.createElement('li');
@@ -221,6 +358,11 @@ function selectSession(index) {
 
     state.currentSession = session;
     dom.sessionName.textContent = session.name;
+
+    // 记住用户选择的桌面环境
+    if (state.currentUser) {
+        localStorage.setItem('session_' + state.currentUser.username, session.key);
+    }
 
     const items = dom.sessionList.querySelectorAll('li');
     items.forEach((item) => item.classList.remove('active'));
@@ -250,6 +392,7 @@ var _authCancelInProgress = false;
 function resetLoginState() {
     state.isAuthenticating = false;
     state.isLoggedIn = false;
+    state._promptReceived = false;
     dom.passwordInput.value = '';
     dom.passwordInput.disabled = true;
     dom.loginBtn.disabled = true;
@@ -291,9 +434,12 @@ function startAuthentication() {
     }
 
     state.isAuthenticating = true;
+    state._promptReceived = false;
+    // 允许用户输入密码，但在收到 show_prompt 之前禁用登录按钮
+    // 否则 respond() 会在 PAM 就绪前被调用，导致响应被忽略、认证卡死
     dom.passwordInput.disabled = false;
     dom.passwordInput.focus();
-    dom.loginBtn.disabled = false;
+    dom.loginBtn.disabled = true;
 
     // Small delay to ensure cancel completes before starting new auth
     setTimeout(function () {
@@ -307,9 +453,10 @@ function startAuthentication() {
         if (state.isAuthenticating && !state.isLoggedIn) {
             console.warn('[LightDM Theme] Auth timeout, resetting');
             state.isAuthenticating = false;
+            state._promptReceived = false;
             hideLoading();
             dom.passwordInput.disabled = false;
-            dom.loginBtn.disabled = false;
+            dom.loginBtn.disabled = true;
             showMessage('Authentication timeout, please try again', 'error');
         }
     }, 30000);
@@ -323,6 +470,14 @@ function submitPassword() {
         console.warn('[LightDM Theme] Auth not started, attempting to start');
         startAuthentication();
         showMessage('请再次点击登录以完成验证', 'info');
+        return;
+    }
+
+    // 如果 PAM 尚未就绪（show_prompt 未触发），不调用 respond()
+    // 等待 onShowPrompt 收到后再自动提交
+    if (!state._promptReceived) {
+        console.log('[LightDM Theme] Prompt not yet received, waiting...');
+        showMessage('正在连接认证服务...', 'info');
         return;
     }
 
@@ -375,9 +530,11 @@ function onAuthenticationComplete() {
 }
 
 function onShowPrompt(text) {
-    if (text) {
-        showMessage(text, 'info');
-    }
+    // 不显示 PAM 的 prompt 文本（如 "Password:"），
+    // 密码框占位符已标明用途，显示蓝字反而干扰视觉
+
+    // 标记已收到 prompt，PAM 已就绪可以接收响应
+    state._promptReceived = true;
 
     // 如果 prompt 再次触发（如 PAM 多阶段认证），重新启用输入框
     if (state.isAuthenticating && !state.isLoggedIn && dom.passwordInput.disabled) {
@@ -388,7 +545,12 @@ function onShowPrompt(text) {
         return;
     }
 
-    // 如果认证已启动且有密码输入，自动提交
+    // 启用登录按钮（可能在 startAuthentication 中被禁用等待 prompt）
+    if (state.isAuthenticating && !state.isLoggedIn) {
+        dom.loginBtn.disabled = false;
+    }
+
+    // 如果用户已经输入了密码，自动提交
     // 这处理了 show_prompt 在用户点击登录后才触发的情况
     if (state.isAuthenticating && dom.passwordInput.value && !dom.passwordInput.disabled) {
         console.log('[LightDM Theme] show_prompt received, auto-submitting password');
@@ -535,6 +697,7 @@ if (typeof lightdm !== 'undefined') {
 
 if (!isLightDMAvailable()) {
     console.warn('[LightDM Theme] LightDM API unavailable, using mock data');
+    _apiMode = 'webkit2'; // mock 模拟 WebKit2 API
 
     const mockUsers = [
         { username: 'alice', display_name: 'Alice', image: '' },
@@ -560,16 +723,27 @@ if (!isLightDMAvailable()) {
         select_user: function () {},
         authenticate: function (username) {
             console.log('[Mock] Authenticating:', username);
+            // 模拟 PAM 流程：延迟触发 show_prompt
+            var self = this;
+            setTimeout(function () {
+                if (self.show_prompt) {
+                    self.show_prompt('Password:', 'password');
+                } else if (window.show_prompt) {
+                    window.show_prompt('Password:', 'password');
+                }
+            }, 200);
         },
         respond: function (secret) {
             console.log('[Mock] Sending password:', secret);
-            if (secret === 'password') {
-                this.is_authenticated = true;
-                if (this.authentication_complete) this.authentication_complete();
-            } else {
-                this.is_authenticated = false;
-                if (this.authentication_complete) this.authentication_complete();
-            }
+            var self = this;
+            setTimeout(function () {
+                if (secret === 'password') {
+                    self.is_authenticated = true;
+                } else {
+                    self.is_authenticated = false;
+                }
+                if (self.authentication_complete) self.authentication_complete();
+            }, 300);
         },
         cancel_authentication: function () {
             console.log('[Mock] Cancel authentication');
