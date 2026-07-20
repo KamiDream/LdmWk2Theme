@@ -274,7 +274,7 @@ function startAuthentication() {
 
 function submitPassword() {
     if (state.isLoggedIn) return;
-    if (!state.isAuthenticating) { startAuthentication(); showMessage('请再次点击登录', 'info'); return; }
+    if (!state.isAuthenticating) { startAuthentication(); return; }
     if (!state._promptReceived) { showMessage('正在连接认证服务...', 'info'); return; }
     if (!dom.passwordInput.value) return;
 
