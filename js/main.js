@@ -250,6 +250,41 @@ function initPower() {
 }
 
 // ==========================================
+// 自适应缩放（基于 1920×1080 参考分辨率）
+// ==========================================
+const SCALE_REF_W = 1920;
+const SCALE_REF_H = 1080;
+
+function applyScale() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const scale = Math.min(w / SCALE_REF_W, h / SCALE_REF_H);
+    // 限制缩放范围，防止极端值
+    const clamped = Math.max(0.4, Math.min(scale, 3));
+    document.documentElement.style.setProperty('--scale', clamped);
+}
+
+/**
+ * 创建 #scale-wrap 包装器，将需要缩放的 DOM 包裹其中。
+ * #background / #loading-overlay 保留在包装器外，避免缩放影响其 fixed 定位。
+ */
+function initScaleWrap() {
+    if (document.getElementById('scale-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'scale-wrap';
+
+    // 不需要包装的 fixed 元素选择器列表
+    const exclude = new Set(['#background', '#loading-overlay']);
+    const children = Array.from(document.body.children);
+    for (const child of children) {
+        if (!exclude.has('#' + child.id)) {
+            wrap.appendChild(child);
+        }
+    }
+    document.body.appendChild(wrap);
+}
+
+// ==========================================
 // 事件绑定
 // ==========================================
 dom.userAvatarContainer.addEventListener('click', e => { e.stopPropagation(); if (state.users.length > 1) { buildUserDropdown(); dom.userDropdown.classList.toggle('hidden'); } });
@@ -274,6 +309,11 @@ function initTheme() {
     if (_initDone) return;
     _initDone = true;
     try {
+        // 缩放初始化
+        initScaleWrap();
+        applyScale();
+        window.addEventListener('resize', applyScale);
+
         state.users = getUsers();
         if (!state.users.length) { dom.passwordInput.disabled = true; dom.loginBtn.disabled = true; showMsg('No available user accounts', 'error'); return; }
         state.currentUserIndex = 0; updateCurrentUser(); updateSessions(); initPower();
