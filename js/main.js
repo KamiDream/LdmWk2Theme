@@ -258,6 +258,19 @@ function startAuthentication() {
     dom.loginBtn.disabled = false;
 
     authenticate(user.username);
+
+    // 认证超时保护：如果 15 秒后仍未完成认证，重置状态
+    if (state._authTimer) clearTimeout(state._authTimer);
+    state._authTimer = setTimeout(function () {
+        if (state.isAuthenticating && !state.isLoggedIn) {
+            console.warn('[LightDM 主题] 认证超时，重置');
+            state.isAuthenticating = false;
+            hideLoading();
+            dom.passwordInput.disabled = false;
+            dom.loginBtn.disabled = false;
+            showMessage('认证超时，请重试', 'error');
+        }
+    }, 15000);
 }
 
 function submitPassword() {
@@ -286,6 +299,12 @@ function submitPassword() {
 function onAuthenticationComplete() {
     hideLoading();
 
+    // 清除认证超时定时器
+    if (state._authTimer) {
+        clearTimeout(state._authTimer);
+        state._authTimer = null;
+    }
+
     if (!isLightDMAvailable()) return;
 
     if (lightdm.is_authenticated) {
@@ -306,6 +325,12 @@ function onAuthenticationComplete() {
 function onShowPrompt(text) {
     if (text) {
         showMessage(text, 'info');
+    }
+    // 如果认证已启动且有密码输入，自动提交
+    // 这处理了 show_prompt 在用户点击登录后才触发的情况
+    if (state.isAuthenticating && dom.passwordInput.value && !dom.passwordInput.disabled) {
+        console.log('[LightDM 主题] show_prompt 触发，自动提交密码');
+        submitPassword();
     }
 }
 
