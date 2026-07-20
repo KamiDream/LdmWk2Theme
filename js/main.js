@@ -33,7 +33,6 @@ const dom = {
     sessionName: document.getElementById('session-name'),
     sessionDropdown: document.getElementById('session-dropdown'),
     sessionList: document.getElementById('session-list'),
-    suspendBtn: document.getElementById('suspend-btn'),
     restartBtn: document.getElementById('restart-btn'),
     shutdownBtn: document.getElementById('shutdown-btn'),
     loadingOverlay: document.getElementById('loading-overlay'),
@@ -316,7 +315,6 @@ function onShowMessage(text, type) {
 function initPowerControls() {
     if (!isLightDMAvailable()) return;
 
-    dom.suspendBtn.style.display = lightdm.can_suspend ? 'flex' : 'none';
     dom.restartBtn.style.display = lightdm.can_restart ? 'flex' : 'none';
     dom.shutdownBtn.style.display = lightdm.can_shutdown ? 'flex' : 'none';
 }
@@ -365,12 +363,6 @@ document.addEventListener('click', (e) => {
 });
 
 // 电源按钮
-dom.suspendBtn.addEventListener('click', () => {
-    if (isLightDMAvailable() && lightdm.can_suspend) {
-        lightdm.suspend();
-    }
-});
-
 dom.restartBtn.addEventListener('click', () => {
     if (isLightDMAvailable() && lightdm.can_restart) {
         showLoading('正在重启...');
@@ -466,7 +458,6 @@ if (!isLightDMAvailable()) {
         sessions: mockSessions,
         default_session: 'gnome',
         is_authenticated: false,
-        can_suspend: true,
         can_restart: true,
         can_shutdown: true,
         hostname: 'my-computer',

@@ -69,16 +69,19 @@ body {
 /* --- Status Bar / 顶部状态栏 --- */
 #status-bar {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 8px;
+    left: 8px;
+    right: 8px;
     z-index: 10;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 6px 16px;
     background: rgba(255, 255, 255, 0.12);
-    border-bottom: 1px solid var(--card-border);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
 
 #status-left,
@@ -429,10 +432,6 @@ body {
 
 .power-btn:active {
     transform: scale(0.9);
-}
-
-#suspend-btn:hover {
-    color: #ffa726;
 }
 
 #restart-btn:hover {
