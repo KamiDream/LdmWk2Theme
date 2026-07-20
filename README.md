@@ -29,7 +29,7 @@ sudo cp -r LdmWk2Theme /usr/share/lightdm-webkit/themes/KamiDream_Theme
 
 ```ini
 [Seat:*]
-greeter-session=lightdm-webkit2-greeter
+greeter_session=lightdm-webkit2-greeter
 ```
 
 ### 4. 配置 greeter 主题
