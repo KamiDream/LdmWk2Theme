@@ -13,7 +13,7 @@
 
 ```bash
 # Arch Linux — lightdm-webkit2-greeter（推荐）
-sudo pacman -S lightdm lightdm-webkit2-greeter
+sudo pacman -S lightdm-webkit2-greeter
 
 ```
 
