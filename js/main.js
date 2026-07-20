@@ -258,9 +258,9 @@ const SCALE_REF_H = 1080;
 function applyScale() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const scale = Math.min(w / SCALE_REF_W, h / SCALE_REF_H);
+    const scale = Math.min(w / SCALE_REF_W, h / SCALE_REF_H) * 1.12;
     // 限制缩放范围，防止极端值
-    const clamped = Math.max(0.4, Math.min(scale, 3));
+    const clamped = Math.max(0.4, Math.min(scale, 4));
     document.documentElement.style.setProperty('--scale', clamped);
 }
 
