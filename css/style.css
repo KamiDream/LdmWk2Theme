@@ -162,11 +162,20 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.15);
     cursor: pointer;
     transition: border-color var(--transition-speed) ease;
-    margin-left: 4px;
 }
 
 #user-avatar-container:hover {
     border-color: var(--accent-color);
+}
+
+#user-avatar-container.auth-loading {
+    border-color: var(--accent-color);
+    animation: avatarPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes avatarPulse {
+    0%, 100% { border-color: var(--accent-color); box-shadow: 0 0 6px rgba(79,195,247,0.4); }
+    50% { border-color: rgba(255,255,255,0.15); box-shadow: 0 0 2px rgba(79,195,247,0.1); }
 }
 
 #user-avatar {
@@ -249,7 +258,7 @@ body {
     background: var(--input-bg);
     border: 1px solid var(--input-border);
     border-radius: 999px;
-    padding: 2px 2px 2px 0;
+    padding: 5px;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     transition: all var(--transition-speed) ease;
@@ -259,6 +268,18 @@ body {
     background: var(--input-bg-focus);
     border-color: var(--input-border-focus);
     box-shadow: 0 0 20px rgba(79, 195, 247, 0.15);
+}
+
+#password-container.error-outline {
+    border-color: var(--error-color);
+    box-shadow: 0 0 14px rgba(239, 83, 80, 0.35);
+    animation: errorPulse 0.8s ease;
+}
+
+@keyframes errorPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
 }
 
 #password-input {
