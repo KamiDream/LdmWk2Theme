@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LightDM WebKit2 主题</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="background"></div>
+
+    <!-- 顶部状态栏 -->
+    <div id="status-bar">
+        <div id="status-left">
+            <div id="session-selector">
+                <button id="session-btn">
+                    <span id="session-name">桌面环境</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path fill="currentColor" d="M7 10l5 5 5-5H7z"/>
+                    </svg>
+                </button>
+                <div id="session-dropdown" class="dropdown hidden">
+                    <ul id="session-list"></ul>
+                </div>
+            </div>
+        </div>
+        <div id="status-center">
+            <span id="status-time">--月--日 星期- --:--:--</span>
+        </div>
+        <div id="status-right">
+            <div id="power-controls">
+                <button id="suspend-btn" class="power-btn" title="挂起">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="currentColor" d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.59-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>
+                    </svg>
+                </button>
+                <button id="restart-btn" class="power-btn" title="重启">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                </button>
+                <button id="shutdown-btn" class="power-btn" title="关机">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="currentColor" d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.59-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="container">
+        <!-- 登录表单 -->
+        <div id="login-form">
+            <div id="arch-logo">
+                <svg viewBox="0 0 460 520" width="44" height="50">
+                    <path fill="currentColor" d="M230 0L0 520l115-2L230 260l115 258 115 2z"/>
+                </svg>
+            </div>
+            <div id="password-container">
+                <div id="user-avatar-wrapper">
+                    <div id="user-avatar-container">
+                        <img id="user-avatar" src="" alt="">
+                        <div id="user-avatar-fallback"></div>
+                    </div>
+                    <div id="user-dropdown" class="hidden">
+                        <ul id="user-list-dropdown"></ul>
+                    </div>
+                </div>
+                <input type="password" id="password-input" placeholder="输入密码" autocomplete="off">
+                <button id="login-btn" title="登录">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="message-container"></div>
+        </div>
+    </div>
+
+    <!-- 加载遮罩 -->
+    <div id="loading-overlay" class="hidden">
+        <div id="loading-spinner"></div>
+        <div id="loading-text">正在验证...</div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

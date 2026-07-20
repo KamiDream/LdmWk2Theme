@@ -1,0 +1,27 @@
+{
+    "name": "LdmWk2Theme",
+    "display_name": "LDM WebKit2 主题",
+    "description": "一个简洁现代的 LightDM WebKit2 登录主题，支持用户切换、会话选择和系统电源管理",
+    "author": "Zoo",
+    "version": "1.0.0",
+    "lightdm-webkit2-greeter": {
+        "greeter_type": "lightdm-webkit2-greeter",
+        "layouts": [
+            {
+                "name": "default",
+                "icon": "avatar-default",
+                "background": true
+            }
+        ],
+        "config": {
+            "background_url": "",
+            "background_color": "#1a1a2e",
+            "clock_format": "24h",
+            "greeter_timeout": 30
+        }
+    },
+    "greeter_type": "lightdm-webkit2-greeter",
+    "main_html": "index.html",
+    "main_css": "css/style.css",
+    "main_js": "js/main.js"
+}
