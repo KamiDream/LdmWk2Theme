@@ -417,35 +417,54 @@ dom.shutdownBtn.addEventListener('click', () => {
 var _themeInitialized = false;
 
 function initTheme() {
-    // 防止重复初始化
+    // Prevent duplicate initialization
     if (_themeInitialized) return;
     _themeInitialized = true;
 
     try {
-        // 获取用户列表
+        // Bind LightDM callbacks inside initTheme to ensure they are registered
+        // before authenticate() is called. Some greeter versions require this.
+        if (typeof lightdm !== 'undefined') {
+            lightdm.authentication_complete = function () {
+                console.log('[LightDM Theme] Authentication complete');
+                onAuthenticationComplete();
+            };
+
+            lightdm.show_prompt = function (text, type) {
+                console.log('[LightDM Theme] Show prompt:', text, type);
+                onShowPrompt(text);
+            };
+
+            lightdm.show_message = function (text, type) {
+                console.log('[LightDM Theme] Show message:', text, type);
+                onShowMessage(text, type);
+            };
+        }
+
+        // Get user list
         state.users = getUsers();
 
         if (state.users.length === 0) {
             dom.passwordInput.disabled = true;
             dom.loginBtn.disabled = true;
-            showMessage('没有可用用户账户', 'error');
+            showMessage('No available user accounts', 'error');
             return;
         }
 
         state.currentUserIndex = 0;
         updateCurrentUser();
 
-        // 初始化会话列表
+        // Initialize session list
         updateSessions();
 
-        // 初始化电源控制
+        // Initialize power controls
         initPowerControls();
 
-        // 启动认证
+        // Start authentication
         startAuthentication();
     } catch (e) {
-        console.error('[LightDM 主题] 初始化失败:', e);
-        showMessage('主题初始化失败', 'error');
+        console.error('[LightDM Theme] Init failed:', e);
+        showMessage('Theme initialization failed', 'error');
     }
 }
 
@@ -459,23 +478,8 @@ window.greeter_ready = function () {
 };
 
 if (typeof lightdm !== 'undefined') {
-    lightdm.authentication_complete = function () {
-        console.log('[LightDM Theme] Authentication complete');
-        onAuthenticationComplete();
-    };
-
-    lightdm.show_prompt = function (text, type) {
-        console.log('[LightDM Theme] Show prompt:', text, type);
-        onShowPrompt(text);
-    };
-
-    lightdm.show_message = function (text, type) {
-        console.log('[LightDM Theme] Show message:', text, type);
-        onShowMessage(text, type);
-    };
-
-    // 部分 LightDM WebKit2 Greeter 版本不触发 greeter_ready
-    // 直接在此处初始化，同时保留 greeter_ready 作为兼容
+    // Callbacks are now bound inside initTheme() to ensure they are set
+    // before authenticate() is called
     console.log('[LightDM Theme] LightDM available, initializing now');
     initTheme();
 }
