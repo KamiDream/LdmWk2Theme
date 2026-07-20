@@ -126,6 +126,12 @@ html, body {
     color: var(--text-dim); transition: background var(--ts) ease;
 }
 #user-list-dropdown li:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+#user-list-dropdown li .drop-avatar {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,0.1); font-size: 13px; flex-shrink: 0;
+}
+
 #user-list-dropdown li.active {
     color: #0288d1; background: rgba(255,255,255,0.05); font-weight: 500;
 }
