@@ -414,7 +414,13 @@ dom.shutdownBtn.addEventListener('click', () => {
 // 主题初始化
 // ==========================================
 
+var _themeInitialized = false;
+
 function initTheme() {
+    // 防止重复初始化
+    if (_themeInitialized) return;
+    _themeInitialized = true;
+
     try {
         // 获取用户列表
         state.users = getUsers();
@@ -468,22 +474,10 @@ if (typeof lightdm !== 'undefined') {
         onShowMessage(text, type);
     };
 
-    // 备用初始化：某些 LightDM 版本可能不触发 greeter_ready
-    // 使用 requestAnimationFrame 确保 DOM 就绪后再初始化
-    if (typeof window.greeter_ready === 'function') {
-        var _origReady = window.greeter_ready;
-        window.greeter_ready = function () {
-            _origReady();
-        };
-    }
-
-    // 兜底：如果 2 秒后仍未初始化，强制初始化
-    var initTimer = setTimeout(function () {
-        if (!state.isAuthenticating && state.users.length === 0) {
-            console.warn('[LightDM 主题] greeter_ready 未触发，执行备用初始化');
-            initTheme();
-        }
-    }, 2000);
+    // 部分 LightDM WebKit2 Greeter 版本不触发 greeter_ready
+    // 直接在此处初始化，同时保留 greeter_ready 作为兼容
+    console.log('[LightDM 主题] LightDM 可用，立即初始化');
+    initTheme();
 }
 
 // ==========================================
