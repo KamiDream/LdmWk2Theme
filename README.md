@@ -50,7 +50,7 @@ webkit_theme = KamiDream_Theme
 ### 5. 重启
 
 ```bash
-sudo systemctl restart lightdm
+reboot
 ```
 
 > ⚠️ 重启 LightDM 会退出当前图形会话，建议在 TTY 中执行。
@@ -71,10 +71,10 @@ greeter-session=lightdm-webkit2-greeter
 #greeter-session=lightdm-webkit2-greeter
 ```
 
-然后重启系统或仅重启 LightDM：
+然后重启系统:
 
 ```bash
-sudo systemctl restart lightdm
+reboot
 ```
 
 ## 文件结构
