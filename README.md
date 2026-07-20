@@ -2,12 +2,18 @@
 
 简洁现代的 LightDM 登录/锁屏主题，兼容 **lightdm-webkit2-greeter** 和 **lightdm-webkit (WebKit1)**。
 
+> ⚠️ **单 N 卡独显或开启了独显直连的用户（纯 N 卡用户）请勿使用此配置！**
+> **Do NOT use this configuration if you have a single/primary NVIDIA GPU!**
+
 ## 功能
 
 🕐 实时中文时钟 · 👤 用户切换 · 🔑 密码登录 · 🖥️ 会话选择（localStorage 记忆）  
 ⚡ 电源管理 · 🌀 加载动画 · 🎨 毛玻璃效果 · 📱 响应式 · 🔄 双 API 兼容
 
 ## 安装
+
+> 💡 **推荐使用 [ArchInit](https://github.com/KamiDream/ArchInit) 中的 `lightdm.sh` 脚本一键安装配置。**
+> **It is recommended to use the `lightdm.sh` script from [ArchInit](https://github.com/KamiDream/ArchInit) for one-click installation and configuration.**
 
 ### 1. 安装 greeter
 
@@ -29,7 +35,7 @@ sudo cp -r LdmWk2Theme /usr/share/lightdm-webkit/themes/KamiDream_Theme
 
 ```ini
 [Seat:*]
-greeter_session=lightdm-webkit2-greeter
+greeter-session=lightdm-webkit2-greeter
 ```
 
 ### 4. 配置 greeter 主题
@@ -37,7 +43,7 @@ greeter_session=lightdm-webkit2-greeter
 ```bash
 # lightdm-webkit2-greeter：/etc/lightdm/lightdm-webkit2-greeter.conf
 [greeter]
-webkit-theme = KamiDream_Theme
+webkit_theme = KamiDream_Theme
 
 ```
 
@@ -48,6 +54,28 @@ sudo systemctl restart lightdm
 ```
 
 > ⚠️ 重启 LightDM 会退出当前图形会话，建议在 TTY 中执行。
+
+## 故障排除
+
+### 黑屏
+
+如果配置后出现黑屏，请编辑 `/etc/lightdm/lightdm.conf`，将：
+
+```ini
+greeter-session=lightdm-webkit2-greeter
+```
+
+修改为：
+
+```ini
+#greeter-session=lightdm-webkit2-greeter
+```
+
+然后重启系统或仅重启 LightDM：
+
+```bash
+sudo systemctl restart lightdm
+```
 
 ## 文件结构
 
