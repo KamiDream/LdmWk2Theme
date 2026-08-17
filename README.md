@@ -1,6 +1,6 @@
-# LdmWk2Theme - LightDM WebKit 登录主题
+# LdmWk2Theme - LightDM WebKit2 登录主题
 
-简洁现代的 LightDM 登录/锁屏主题，兼容 **lightdm-webkit2-greeter** 和 **lightdm-webkit (WebKit1)**。
+简洁现代的 LightDM 登录/锁屏主题，仅兼容 **lightdm-webkit2-greeter**（WebKit2）。
 
 > ⚠️ **单 N 卡独显或开启了独显直连的用户（纯 N 卡用户）请勿使用此配置！**
 > **Do NOT use this configuration if you have a single/primary NVIDIA GPU!**
@@ -8,7 +8,7 @@
 ## 功能
 
 🕐 实时中文时钟 · 👤 用户切换 · 🔑 密码登录 · 🖥️ 会话选择（localStorage 记忆）  
-⚡ 电源管理 · 🌀 加载动画 · 🎨 毛玻璃效果 · 📱 响应式 · 🔄 双 API 兼容
+⚡ 电源管理 · 🌀 加载动画 · 🎨 毛玻璃效果 · 📱 响应式
 
 ## 安装
 
@@ -18,9 +18,8 @@
 ### 1. 安装 greeter
 
 ```bash
-# Arch Linux — lightdm-webkit2-greeter（推荐）
+# Arch Linux — lightdm-webkit2-greeter
 sudo pacman -S lightdm-webkit2-greeter
-
 ```
 
 ### 2. 复制主题
@@ -44,7 +43,6 @@ greeter-session=lightdm-webkit2-greeter
 # lightdm-webkit2-greeter：/etc/lightdm/lightdm-webkit2-greeter.conf
 [greeter]
 webkit_theme = KamiDream_Theme
-
 ```
 
 ### 5. 重启
@@ -82,32 +80,23 @@ reboot
 ```
 ├── index.html            # 主 HTML
 ├── theme.json            # 主题清单
-├── css/style.css         # 样式（220行，CSS 变量 + 毛玻璃 + 响应式）
-├── js/main.js            # 核心逻辑（232行，API 桥接 + 认证流程 + Mock）
+├── css/style.css         # 样式（CSS 变量 + 毛玻璃 + 响应式）
+├── js/main.js            # 核心逻辑（认证流程 + 会话/用户管理 + 电源 + 缩放）
 └── assets/background.png # 默认背景
 ```
 
-## API 兼容
+## API（lightdm-webkit2-greeter）
 
-| 功能 | WebKit1 | WebKit2 |
-|------|---------|---------|
-| 回调 | `window.show_prompt` 全局函数 | `lightdm.show_prompt` 属性赋值 |
-| 认证 | `lightdm.start_authentication()` | `lightdm.authenticate()` |
-| 密码 | `lightdm.provide_secret()` | `lightdm.respond()` |
-| 会话 | `lightdm.login(user, key)` | `lightdm.start_session(key)` |
-| 用户 | `user.name` / `user.real_name` | `user.username` / `user.display_name` |
+| 功能 | API |
+|------|-----|
+| 认证 | `lightdm.authenticate(username)` |
+| 密码 | `lightdm.respond(secret)` |
+| 取消 | `lightdm.cancel_authentication()` |
+| 会话 | `lightdm.start_session(key)` |
+| 信号 | `lightdm.show_prompt` / `lightdm.show_message` / `lightdm.authentication_complete`（`.connect()`） |
+| 数据 | `lightdm.users` / `lightdm.sessions` / `lightdm.default_session` / `lightdm.can_restart` / `lightdm.can_shutdown` |
 
-三种回调绑定同时生效：Qt `.connect()` + 全局函数 + 属性赋值，覆盖所有 greeter 变体。
-
-## 开发
-
-浏览器直接打开 `index.html` 即可调试：
-
-```bash
-firefox index.html
-```
-
-Mock 数据：3 用户（Alice/Bob/Charlie）、4 会话（GNOME/KDE Plasma/Xfce/i3）。密码 `password` 模拟成功。
+主题通过 `greeter_ready()` 回调初始化，`lightdm` 对象由 greeter 注入。
 
 ## 自定义
 
