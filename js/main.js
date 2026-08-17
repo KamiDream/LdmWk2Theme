@@ -9,6 +9,7 @@
 const state = {
     users: [], sessions: [], currentUser: null, currentSession: null,
     currentUserIndex: 0, isAuthenticating: false, isLoggedIn: false,
+    isSubmitting: false, _pendingSubmit: false,
     _promptReceived: false,
 };
 
@@ -124,7 +125,7 @@ function buildUserDropdown() {
         li.addEventListener('click', () => {
             if (i === state.currentUserIndex) { dom.userDropdown.classList.add('hidden'); return; }
             state.currentUserIndex = i;
-            cxl(); resetLoginState(); updateCurrentUser();
+            _cancelGuard = true; cxl(); resetLoginState(); updateCurrentUser();
             dom.userDropdown.classList.add('hidden');
             setTimeout(startAuth, 100);
         });
@@ -168,6 +169,7 @@ function updateSessions() {
 // 登录流程
 // ==========================================
 var _cancelGuard = false;
+var _restartTimer = null;
 
 function showMsg(m, t) { dom.messageContainer.textContent = m; dom.messageContainer.className = t || 'info'; }
 function showLoad(t) { dom.loadingOverlay.classList.remove('hidden'); dom.loadingText.textContent = t || '正在处理...'; }
@@ -175,6 +177,7 @@ function hideLoad() { dom.loadingOverlay.classList.add('hidden'); }
 
 function resetLoginState() {
     state.isAuthenticating = false; state.isLoggedIn = false; state._promptReceived = false;
+    state.isSubmitting = false; state._pendingSubmit = false;
     dom.passwordInput.value = ''; dom.passwordInput.disabled = true; dom.loginBtn.disabled = true;
     dom.messageContainer.textContent = ''; dom.messageContainer.className = '';
     hideLoad();
@@ -182,9 +185,12 @@ function resetLoginState() {
 
 function startAuth() {
     if (!state.currentUser) { showMsg('No available user', 'error'); return; }
-    _cancelGuard = true; cxl(); _cancelGuard = false;
+    // 取消认证是异步的：cancel_authentication 之后 LightDM 会回调一次 authentication_complete（“幽灵”回调）。
+    // 因此 _cancelGuard 保持 true，直到 onAuthComplete / onPrompt 确认新一轮认证已开始。
+    _cancelGuard = true; cxl();
 
     state.isAuthenticating = true; state._promptReceived = false;
+    state.isSubmitting = false; state._pendingSubmit = false;
     dom.passwordInput.disabled = false; dom.passwordInput.focus(); dom.loginBtn.disabled = true;
 
     setTimeout(() => auth(state.currentUser.username), 50);
@@ -193,6 +199,7 @@ function startAuth() {
     state._authTimer = setTimeout(() => {
         if (state.isAuthenticating && !state.isLoggedIn) {
             state.isAuthenticating = false; state._promptReceived = false;
+            state.isSubmitting = false; state._pendingSubmit = false;
             dom.userAvatarContainer.classList.remove('auth-loading');
             hideLoad(); dom.passwordInput.disabled = false; dom.loginBtn.disabled = true;
         }
@@ -201,19 +208,28 @@ function startAuth() {
 
 function submitPassword() {
     if (state.isLoggedIn) return;
-    if (!state.isAuthenticating) { startAuth(); return; }
-    if (!state._promptReceived) { return; }
+    if (state.isSubmitting) return;              // 防重入：按键连发/重复点击只提交一次
+    if (!state.isAuthenticating) return;         // 不再兜底启动认证，避免 key-repeat 竞态
     if (!dom.passwordInput.value) return;
 
+    if (!state._promptReceived) {
+        // 提示尚未到达：仅记录提交意图，由 onPrompt 在提示到达时提交
+        state._pendingSubmit = true;
+        return;
+    }
+
+    state.isSubmitting = true; state._pendingSubmit = false;
     dom.userAvatarContainer.classList.add('auth-loading');
     dom.loginBtn.disabled = true; dom.passwordInput.disabled = true;
     respond(dom.passwordInput.value);
 }
 
 function onAuthComplete() {
-    if (_cancelGuard) return;
+    // 吞掉取消认证产生的“幽灵”回调，并复位守卫
+    if (_cancelGuard) { _cancelGuard = false; return; }
     dom.userAvatarContainer.classList.remove('auth-loading');
-    hideLoad(); clearTimeout(state._authTimer);
+    hideLoad(); clearTimeout(state._authTimer); clearTimeout(_restartTimer);
+    state.isSubmitting = false; state._pendingSubmit = false;
     if (!LDM) return;
 
     if (LDM.is_authenticated) {
@@ -226,18 +242,23 @@ function onAuthComplete() {
         dom.passwordInput.value = '';
         dom.passwordContainer.classList.add('error-outline');
         setTimeout(() => dom.passwordContainer.classList.remove('error-outline'), 1500);
-        setTimeout(() => { if (!state.isLoggedIn) startAuth(); }, 300);
+        // 清除旧重启定时器，避免多个失败回调堆叠出多个 startAuth
+        _restartTimer = setTimeout(() => { if (!state.isLoggedIn) startAuth(); }, 300);
     }
 }
 
 function onPrompt(text) {
+    // 收到提示即代表已进入新一轮认证，旧取消流程必然结束，可安全复位守卫
+    _cancelGuard = false;
     if (state.isAuthenticating && !state.isLoggedIn && dom.passwordInput.disabled) {
         dom.passwordInput.disabled = false; dom.passwordInput.value = '';
         dom.loginBtn.disabled = false; dom.passwordInput.focus();
+        state._pendingSubmit = false;
         return;
     }
     if (state.isAuthenticating && !state.isLoggedIn) dom.loginBtn.disabled = false;
-    if (state.isAuthenticating && dom.passwordInput.value && !dom.passwordInput.disabled) submitPassword();
+    // 仅当用户已按回车/点击登录（_pendingSubmit）时才自动提交，避免输入任意字符被误提交
+    if (state.isAuthenticating && state._pendingSubmit && dom.passwordInput.value && !dom.passwordInput.disabled) submitPassword();
 }
 
 // ==========================================
